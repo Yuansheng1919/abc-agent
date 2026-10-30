@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 5,
+  "kind": "tauritavern.agentProfile",
+  "id": "abc-compress",
+  "displayName": "ABC-Compress",
+  "description": "A 实验：压缩专用（background）。压缩专用（background）。自足：压缩提示在本文件 instructions.agentSystemPrompt，不依赖外部预设。允许 chronicle_commit + workspace.finish + workspace.write_file（后者是 Chat 执行准入硬要求，本 Profile 不实际使用）；禁 workspace.commit（不落楼）、禁 recall 与一切历史工具。",
+  "preset": {
+    "mode": "currentPromptSnapshot"
+  },
+  "model": {
+    "mode": "currentPromptSnapshot"
+  },
+  "run": {
+    "presentation": "background",
+    "stream": false,
+    "directRunnable": true,
+    "modelRetry": {
+      "maxRetries": 1,
+      "intervalMs": 3000
+    }
+  },
+  "context": {
+    "initialChatHistoryMessages": -1,
+    "includeActivatedWorldInfo": true
+  },
+  "delegation": {
+    "canDelegate": false,
+    "canHandoff": false,
+    "callable": false,
+    "allowAsSubagent": false,
+    "allowAsHandoffTarget": false,
+    "allowNestedDelegation": false,
+    "allowedCallers": [
+      "*"
+    ],
+    "maxConcurrentInvocations": 1,
+    "maxInvocationsPerRun": 1,
+    "resultBudgetTokens": 2000,
+    "maxHandoffDepth": 1
+  },
+  "instructions": {
+    "agentSystemPrompt": "你是「记忆层压缩器」，不是叙事 Agent。本次只做一件事：把用户消息里给出的原文并入已有记忆层，然后结束。\n\n【允许的工具，只有两个】\n- chronicle_commit({chronicle})：提交合并后的完整记忆层。只调一次。\n- workspace_finish()：提交成功后立刻调用，结束本次运行。\n**禁止调用任何其它工具**，尤其是 workspace_commit / workspace_write_file / recall / chat_*。不要写文件，不要提交正文，本轮不产生任何聊天消息。\n\n【范围】\n本轮的压缩范围、待并入原文、已有记忆层全部在用户消息里给出，楼层号以用户消息为准；不得自行扩大或缩小范围。\n\n【chronicle 的写法】\n必须包含三段，缺一段会被驳回：\n- 「事件」：把范围内发生的事并入已记忆层，按时间顺序，保留因果链与关键转折。\n- 「状态」：当前地点、时间、在场人物、人物关系的当前档位与关键数值（数值只照抄已有记忆层与原文里出现过的，不要自己算、不要改）。\n- 「未收线索」：尚未回收的伏笔、承诺、待办、悬置的冲突。\n\n可选第四段「关键原话」：最多 3 条，每条用「」逐字引用范围内原文或已有记忆层里的原话，一个字都不能改（系统会逐字核对，找不到会驳回）。没有能逐字对上的原话就整段省略。\n\n【硬边界】\n- 只能写已有记忆层与范围内已经发生的内容；范围之后的事实一律不得写进记忆层。\n- 不得编造任何未发生的事，不得写本轮之后会发生的事。\n- 不要求叙事文采，只要求信息完整、可核对。\n\n【结束条件】chronicle_commit 返回 ok:true 之后，同一条回复里调用 workspace_finish()。若返回 ok:false，按 error 原文改正后重新调用 chronicle_commit（最多 3 次）。"
+  },
+  "tools": {
+    "allow": [
+      "builtin:workspace.finish",
+      "builtin:workspace.write_file",
+      "extension/abc:chronicle_commit"
+    ],
+    "deny": [
+      "builtin:agent.delegate",
+      "builtin:agent.await",
+      "builtin:chat.search",
+      "builtin:chat.read_messages",
+      "builtin:worldinfo.read_activated",
+      "builtin:workspace.list_files",
+      "builtin:workspace.search_files",
+      "builtin:workspace.read_file",
+      "builtin:workspace.apply_patch",
+      "builtin:workspace.shell",
+      "builtin:workspace.commit",
+      "extension/abc:recall"
+    ],
+    "toolDescriptions": {},
+    "externalResultInlineCharLimit": 50000
+  },
+  "skills": {
+    "visible": [],
+    "deny": []
+  },
+  "workspace": {
+    "visibleRoots": [
+      "output",
+      "scratch",
+      "plan",
+      "summaries",
+      "persist"
+    ],
+    "writableRoots": [
+      "output",
+      "scratch",
+      "plan",
+      "summaries",
+      "persist"
+    ]
+  },
+  "plan": {
+    "mode": "none",
+    "beta": true,
+    "nodes": []
+  },
+  "output": {
+    "artifacts": [
+      {
+        "id": "main",
+        "path": "output/main.md",
+        "kind": "markdown",
+        "target": "messageBody",
+        "required": false,
+        "assemblyOrder": 0
+      }
+    ]
+  }
+}

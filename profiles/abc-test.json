@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 5,
+  "kind": "tauritavern.agentProfile",
+  "id": "abc-test",
+  "displayName": "ABC-Test",
+  "description": "ABC 三段式正式模板（v1.0：只做产出；回查原文走 extension/abc:recall；压缩由 abc-compress 独立 run 负责）",
+  "preset": {
+    "mode": "ref",
+    "ref": {
+      "apiId": "openai",
+      "name": "Agent-ABC-Test"
+    },
+    "required": true
+  },
+  "model": {
+    "mode": "currentPromptSnapshot"
+  },
+  "run": {
+    "presentation": "foreground",
+    "stream": true,
+    "directRunnable": true,
+    "modelRetry": {
+      "maxRetries": 3,
+      "intervalMs": 3000
+    }
+  },
+  "context": {
+    "initialChatHistoryMessages": -1,
+    "includeActivatedWorldInfo": true
+  },
+  "delegation": {
+    "canDelegate": true,
+    "canHandoff": false,
+    "callable": false,
+    "allowAsSubagent": false,
+    "allowAsHandoffTarget": false,
+    "allowNestedDelegation": false,
+    "allowedCallers": [
+      "*"
+    ],
+    "maxConcurrentInvocations": 3,
+    "maxInvocationsPerRun": 8,
+    "resultBudgetTokens": 8000,
+    "maxHandoffDepth": 8
+  },
+  "instructions": {
+    "agentSystemPrompt": "# Agent Mode is active.\n- Work only through tool calls. Plain text alone does not complete a stage.\n- Writable workspace directories: output/ (and others listed by the profile). Write the reply body to output/main.md.\n- Tool batching rule (HARD requirement):\n  - In ONE single response, call workspace_write_file, workspace_commit and workspace_finish TOGETHER, in that order, one right after another.\n  - Splitting them across separate responses is a failure, even if each call succeeds on its own.\n  - If a call is rejected, correct it and retry; the final write_file + commit + finish must still be in the SAME response.\n  - Call recall only when you truly need to check original text. That does not change this rule: the three calls must still land in one response.\n- Keep any output format the character card or world info requires inside output/main.md exactly as required.\n- Do not answer in plain text. Finish by calling workspace_finish after a successful workspace_commit."
+  },
+  "tools": {
+    "allow": [
+      "builtin:agent.delegate",
+      "builtin:agent.await",
+      "builtin:worldinfo.read_activated",
+      "builtin:workspace.list_files",
+      "builtin:workspace.search_files",
+      "builtin:workspace.read_file",
+      "builtin:workspace.write_file",
+      "builtin:workspace.apply_patch",
+      "builtin:workspace.shell",
+      "builtin:workspace.commit",
+      "builtin:workspace.finish",
+      "extension/abc:recall"
+    ],
+    "deny": [
+      "builtin:chat.search",
+      "builtin:chat.read_messages"
+    ],
+    "toolDescriptions": {},
+    "externalResultInlineCharLimit": 50000
+  },
+  "skills": {
+    "visible": [
+      "*"
+    ],
+    "deny": []
+  },
+  "workspace": {
+    "visibleRoots": [
+      "output",
+      "scratch",
+      "plan",
+      "summaries",
+      "persist"
+    ],
+    "writableRoots": [
+      "output",
+      "scratch",
+      "plan",
+      "summaries",
+      "persist"
+    ]
+  },
+  "plan": {
+    "mode": "none",
+    "beta": true,
+    "nodes": []
+  },
+  "output": {
+    "artifacts": [
+      {
+        "id": "main",
+        "path": "output/main.md",
+        "kind": "markdown",
+        "target": "messageBody",
+        "required": true,
+        "assemblyOrder": 0
+      }
+    ]
+  }
+}
