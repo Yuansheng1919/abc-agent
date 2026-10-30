@@ -18,7 +18,7 @@
 6. Profile description 残留旧工具名（不影响运行）；`window.__abc` 仍对外暴露内部写操作（计划收紧为只读 `read.state()/read.system()`）。
 
 ## 建议下一步
-- 按 2 收紧 `window.__abc`（约 20 行）。
+- 按缺口 6 收紧 `window.__abc`（约 20 行）。
 - 跑韧性：截断 / 取消时压缩与落楼都不能留脏数据（终态只允许 failed 或 cancelled，聊天行数与 `chat_metadata.abc` 不变）。
 - 任何修改都要登记扩展 / Profile 的前后 md5（不变量 I6）。
 
