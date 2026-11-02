@@ -34,6 +34,7 @@
 ## R06（2026-11-03）：真机实测与观测层补丁
 
 完整报告：`docs/r06-device-findings.md`；接手引导：`docs/r06-upstream-brief.md`。
+皮肤引擎的「区域展开」契约与补强提案：`docs/r06-skin-region-contract.md` / `docs/r06-region-proposal.md`。
 
 ### 已改（I6 md5 登记，均基于 **LF blob**，Windows 工作区文件因 `autocrlf` 会差 583 B）
 
