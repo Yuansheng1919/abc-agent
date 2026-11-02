@@ -1,0 +1,62 @@
+diff --git a/ext/abc/index.js b/ext/abc/index.js
+index 917558d..214b7a1 100644
+--- a/ext/abc/index.js
++++ b/ext/abc/index.js
+@@ -47,13 +47,37 @@
+ 
+   // 调试只落 chat_metadata（不上屏），adb pull 聊天 jsonl 即可取
+   // R05：上限 80 太小 —— 一批 6 轮里 discover 噪声就能占 69 条，把压缩证据挤出窗口（R04 真机实测）
+-  const DBG_MAX = 300;
++  // R06：长局（300+ 轮）窗口治理
++  //   ① DBG_MAX 300→3000：实测密度 3.61 条/楼（300/83），其中可归并的跳过类 0.81 条/楼，
++  //      归并后 2.80 条/楼。一轮 = 用户+助手 = 2 楼，故 300 轮 = 600 楼 ≈ 1680 条，
++  //      500 轮 = 1000 楼 ≈ 2800 条 → 定容 3000（约 140KB，只进 chat_metadata，不进楼层）。
++  //   ② 高频事件按 (evt|reason) 单槽累加：同类永久只占 1 格，重复次数记进 n。
++  //      实测 discover_skip_not_main / compress_skip / finalize_skip_replayed 合计 67/300，
++  //      归并后省下 22% 窗口（R05 只做了同 runId 相邻去重，slot 占用没解决）。
++  const DBG_MAX = 3000;
++  const DBG_SINGLE = new Set(['discover_skip_not_main', 'compress_skip', 'finalize_skip_replayed']);
++  const dbgSlot = (evt, data) => evt + '|' + String((data && data.reason) || '');
+   function dbg(evt, data, targetMd) {
+     try {
+       const m = targetMd ? (targetMd.abc || null) : meta();
+       if (!m) return null;
+       m.debug = Array.isArray(m.debug) ? m.debug : [];
+-      m.debug.push({ t: Date.now(), evt, ...(data || {}) });
++      const single = DBG_SINGLE.has(evt);
++      if (single) {
++        const slot = dbgSlot(evt, data);
++        const e = m.debug.find(x => x && x.evt === evt && (x.slot || '') === slot);
++        if (e) {
++          m.debug.splice(m.debug.indexOf(e), 1);
++          e.t = Date.now();
++          e.n = (e.n || 1) + 1;
++          if (data) for (const k of Object.keys(data)) if (k !== 'count') e[k] = data[k];
++          m.debug.push(e);
++          return e;
++        }
++      }
++      const row = { t: Date.now(), evt, ...(data || {}) };
++      if (single) row.slot = dbgSlot(evt, data);
++      m.debug.push(row);
+       if (m.debug.length > DBG_MAX) m.debug.splice(0, m.debug.length - DBG_MAX);
+       return m.debug[m.debug.length - 1];   // R05：返回已落盘的条目，供去重累计复用同一对象
+     } catch (e) { console.warn('[abc] dbg failed', e); return null; }
+@@ -219,7 +243,7 @@
+       const m = (compressMd?.abc) || meta();
+       m.compEvidence = Array.isArray(m.compEvidence) ? m.compEvidence : [];
+       m.compEvidence.push({ t: Date.now(), ...(data || {}) });
+-      if (m.compEvidence.length > 10) m.compEvidence.splice(0, m.compEvidence.length - 10);
++      if (m.compEvidence.length > 60) m.compEvidence.splice(0, m.compEvidence.length - 60);
+       return m.compEvidence[m.compEvidence.length - 1];
+     } catch (e) { console.warn('[abc] evidence failed', e); return null; }
+   }
+@@ -532,7 +556,7 @@
+   }
+ 
+   // ---------- 对外只读接口（Q1：整体冻结，不暴露任何写操作）----------
+-  const EXT_VERSION = '1.0.0';
++  const EXT_VERSION = '0.5.1-r04';
+   const deepFreeze = o => { if (o && typeof o === 'object') { for (const v of Object.values(o)) deepFreeze(v); Object.freeze(o); } return o; };
+   // 隐藏楼层：优先读楼层上真实的 abc_hidden 标记；旧聊天没有标记时才按 cursor 推算
+   function hiddenFloorList() {
